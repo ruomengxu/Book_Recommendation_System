@@ -1,0 +1,16 @@
+Core Dataset (List of Fiction Works):
+http://www.isfdb.org/wiki/index.php/ISFDB_Downloads
+
+Scraped Reviews:
+Amazon
+Goodreads
+
+Wikipedia Extracts:
+http://wiki.dbpedia.org/
+
+Scraped Synopsys:
+Goodreads
+
+List of Tropes:
+http://skipforward.opendfki.de/wiki/DBTropes
+
