@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+
+
+<script src="../lib/d3.v3.min.js"></script>
+<script src="../lib/d3.tip.v0.6.3.js"></script>
+
+<!-- jQuery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+<!--
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/9.5.1/bootstrap-slider.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/9.5.1/css/bootstrap-slider.min.css" />
+-->
+
+<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+
+<script>
+  $( function() {
+    $( "#slider-vertical" ).slider({
+      orientation: "vertical",
+      range: "min",
+      min: 0,
+      max: 100,
+      value: 60,
+      slide: function( event, ui ) {
+        $( "#amount" ).val( ui.value );
+      }
+    });
+    $( "#amount" ).val( $( "#slider-vertical" ).slider( "value" ) );
+  } );
+</script>
+
+<style>
+.centered-slider{
+    float: none;
+    margin: 0 auto;
+	display: block!important;
+}
+
+.centered-text{
+	text-align: center;
+	display: block!important;
+}
+
+img.thumbnail{
+	height:200px;
+}
+</style>
+
+<!-- Autocomplete -->
+
+<script src="jquery.autocomplete.min.js"></script>
+
+<script>
+$('#TitleInput').autocomplete({
+    serviceUrl: 'https://suggest.autocompleteapi.com/ap3g3fpfr05x/books',
+    paramName: 'prefix',
+    onSelect: function (suggestion) {
+        alert('You selected: ' + suggestion.value + '\n' + JSON.stringify(suggestion.data));
+    }
+});
+</script>
+
+<style>
+.autocomplete-suggestions { border: 1px solid #999; background: #FFF; overflow: auto; }
+.autocomplete-suggestion { padding: 2px 5px; white-space: nowrap; overflow: hidden; }
+.autocomplete-selected { background: #F0F0F0; }
+.autocomplete-suggestions strong { font-weight: normal; color: #3399FF; }
+.autocomplete-group { padding: 2px 5px; }
+.autocomplete-group strong { display: block; border-bottom: 1px solid #000; }
+</style>
+
+<script type="text/javascript">
+window.addEventListener('keydown',function(e){if(e.keyIdentifier=='U+000A'||e.keyIdentifier=='Enter'||e.keyCode==13){if(e.target.nodeName=='INPUT'&&e.target.type=='text'){e.preventDefault();return false;}}},true);
+</script>
+
+<script>
+function sortProperties(obj, isNumericSort)
+{
+    isNumericSort=isNumericSort || false; // by default text sort
+    var sortable=[];
+    for(var key in obj)
+        if(obj.hasOwnProperty(key))
+            sortable.push([key, obj[key]]);
+    if(isNumericSort)
+        sortable.sort(function(a, b)
+        {
+            return b[1]-a[1];
+        });
+    else
+        sortable.sort(function(a, b)
+        {
+            var x=a[1].toLowerCase(),
+                y=b[1].toLowerCase();
+            return x<y ? -1 : x>y ? 1 : 0;
+        });
+    return sortable; // array in format [ [ key1, val1 ], [ key2, val2 ], ... ]
+}
+
+
+$(document).ready(function(){
+    $("button").click(function(){
+		searchedbook = $('#TitleInput').val()
+		console.log(searchedbook);
+		$.ajax({
+			url:'http://127.0.0.1:5000/metadata?where={"title":"' + searchedbook + '"}',
+			complete: function (response) {
+			
+				currentbooks = response.responseJSON._items;
+				currentbook = currentbooks[0];
+				
+				console.log(currentbooks[0]);
+				
+				$('.progress-bar').css('width', 10+'%').attr('aria-valuenow', 10).css('display','block').attr('class','progress-bar progress-bar-striped active').text('Searching...');
+				$('#progressrow').css('display', 'block')
+				
+				if (currentbooks.length > 0) {
+						$.ajax({
+							url:"http://127.0.0.1:5000/metadata?where=avg_rating==" + currentbook.avg_rating + " and sentiment== " + currentbook.sentiment ,
+							success:function(conformity) {
+							
+								console.log(conformity._items);
+								
+								$('.progress-bar').css('width', 20+'%').attr('aria-valuenow', 20)
+							
+								$.ajax({
+									url:'http://127.0.0.1:5000/keysearch?aggregate={"$keywordquery":[' + '"' + currentbook.keywords.join('","') + '"' + "]}",
+									success:function(keywords) {
+									
+										console.log(keywords._items)
+										
+										$('.progress-bar').css('width', 50+'%').attr('aria-valuenow', 50)
+
+										$.ajax({
+										
+											url:'http://127.0.0.1:5000/tropesearch?aggregate={"$tropetagquery":[' + '"' + currentbook.tropetags.join('","') + '"' + "]}",
+											success:function(tropetags) {
+											
+												console.log(tropetags._items)
+												
+												if (currentbook.genre == null)
+													currentbook.genre = [-10 -10 -10 -10 -10]
+												
+												$('.progress-bar').css('width', 80+'%').attr('aria-valuenow', 80)
+												
+												$.ajax({
+										
+													url:'http://127.0.0.1:5000/metadata?where={' + 
+													'"genre.0":{"$gte":' + (currentbook.genre[0] - 5) +',"$lte":' + (currentbook.genre[0] + 5)  + '},' +       
+													'"genre.1":{"$gte":' + (currentbook.genre[1] - 5) +',"$lte":' + (currentbook.genre[1] + 5)  + '},' + 
+													'"genre.2":{"$gte":' + (currentbook.genre[2] - 5) +',"$lte":' + (currentbook.genre[2] + 5)  + '},' + 
+													'"genre.3":{"$gte":' + (currentbook.genre[3] - 5) +',"$lte":' + (currentbook.genre[3] + 5)  + '},' + 
+													'"genre.4":{"$gte":' + (currentbook.genre[4] - 5) +',"$lte":' + (currentbook.genre[4] + 5)  + '}' + 
+													'}',
+													success:function(genre) {
+													
+														console.log(genre._items);
+														
+														var keywords2 = []
+														for (var i=0; i < keywords._items.length; i++){
+															keywords2[i] = keywords._items[i]._id;
+														}
+														
+														var tropetags2 = []
+														for (var i=0; i < tropetags._items.length; i++){
+															tropetags2[i] = tropetags._items[i]._id;
+														}
+														
+														jointlist = conformity._items.concat(keywords2).concat(tropetags2).concat(genre._items);
+														
+														console.log(jointlist);
+														
+														
+														currentbooknorm = currentbook.genre[0]*currentbook.genre[0] + currentbook.genre[1]*currentbook.genre[1] + currentbook.genre[2]*currentbook.genre[2] + currentbook.genre[3]*currentbook.genre[3] + currentbook.genre[4]*currentbook.genre[4];
+														
+														currentbooknorm = Math.sqrt(currentbooknorm);
+														
+														var scores = {};
+														var URLs = {};
+													
+														for (var i=0; i < jointlist.length; i++){
+															scores[jointlist[i].title] = [0,0,0,0];
+															URLs[jointlist[i].title] = jointlist[i].imageURL
+														}
+														
+														for (var i=0; i < conformity._items.length; i++){
+															scores[conformity._items[i].title][0] = 1;
+															
+															if (conformity._items[i].genre != null) {
+																curgen = conformity._items[i].genre;
+																curgenscore = [currentbook.genre[0]-curgen[0],currentbook.genre[1]-curgen[1],currentbook.genre[2]-curgen[2],currentbook.genre[3]-curgen[3],currentbook.genre[4]-curgen[4]];
+																curgenscore = curgenscore[0]*curgenscore[0] + curgenscore[1]*curgenscore[1] + curgenscore[2]*curgenscore[2] + curgenscore[3]*curgenscore[3] + curgenscore[4]*curgenscore[4];
+																curgenscore = Math.sqrt(curgenscore)/currentbooknorm;
+																scores[conformity._items[i].title][1] = 1.0 - curgenscore;
+															}
+															
+															var common = $.grep(currentbook.keywords, function(element) {
+																return $.inArray(element, conformity._items[i].keywords ) !== -1;
+															});
+															
+															scores[conformity._items[i].title][2] = common.length;
+															
+															var common = $.grep(currentbook.tropetags, function(element) {
+																return $.inArray(element, conformity._items[i].tropetags ) !== -1;
+															});
+															
+															scores[conformity._items[i].title][3] = common.length;
+															
+															
+														}
+														
+														for (var i=0; i < genre._items.length; i++){
+															
+															if (genre._items[i].genre != null) {
+																curgen = genre._items[i].genre;
+																curgenscore = [currentbook.genre[0]-curgen[0],currentbook.genre[1]-curgen[1],currentbook.genre[2]-curgen[2],currentbook.genre[3]-curgen[3],currentbook.genre[4]-curgen[4]];
+																curgenscore = curgenscore[0]*curgenscore[0] + curgenscore[1]*curgenscore[1] + curgenscore[2]*curgenscore[2] + curgenscore[3]*curgenscore[3] + curgenscore[4]*curgenscore[4];
+																curgenscore = Math.sqrt(curgenscore)/currentbooknorm;
+																scores[genre._items[i].title][1] = 1.0 - curgenscore;
+															}
+															
+															var common = $.grep(currentbook.keywords, function(element) {
+																return $.inArray(element, genre._items[i].keywords ) !== -1;
+															});
+															
+															scores[genre._items[i].title][2] = common.length;
+															
+															var common = $.grep(currentbook.tropetags, function(element) {
+																return $.inArray(element, genre._items[i].tropetags ) !== -1;
+															});
+															
+															scores[genre._items[i].title][3] = common.length;
+															
+															
+														}
+														
+														if (keywords2.length>0) {
+															for (var i=0; i < keywords2.length; i++){																		
+																scores[keywords2[i].title][2] = keywords._items[i].numMatches;
+																							
+															}
+														}
+														
+														if (tropetags2.length>0) {
+															for (var i=0; i < tropetags2.length; i++){																		
+																scores[tropetags2[i].title][3] = tropetags._items[i].numMatches;
+																							
+															}
+														}
+														
+														var total = 0;
+														var meantropes = 0;
+														var meankeys = 0;
+														
+														for (key in scores) {
+															total ++;
+															meankeys = meankeys + scores[key][2];
+															meantropes = meantropes + scores[key][3];
+														}
+														
+														meankeys = meankeys / total;
+														meantropes = meantropes / total;
+														
+														console.log(meankeys);														
+														console.log(meantropes);
+														
+														for (key in scores) {
+															total ++;
+															scores[key][2] = scores[key][2] / meankeys;
+															scores[key][3] = scores[key][3] / meantropes;
+														}
+														
+														console.log(scores);
+														
+														//On Re-Submit? 
+														
+														slider1value = $( "#Aspect1" ).slider( "value" );
+														slider2value = $( "#Aspect2" ).slider( "value" );;
+														slider3value = $( "#Aspect3" ).slider( "value" );;
+														slider4value = $( "#Aspect4" ).slider( "value" );;
+														
+														console.log(slider1value);
+														
+														finalscores = {};
+														finalconfscores = {};
+														finalkeyscores = {};
+														finaltropescores = {};
+														finalgenrescores = {};
+														
+														for (key in scores) {
+															finalconfscores[key] = scores[key][0];
+															finalgenrescores[key] = scores[key][1];
+															finalkeyscores[key] = scores[key][2];
+															finaltropescores[key] = scores[key][3];
+															
+															finalscore = 0;
+															if (!isNaN(scores[key][0])) 
+																finalscore = finalscore + scores[key][0]*slider1value;
+															if (!isNaN(scores[key][1])) 
+																finalscore = finalscore + scores[key][1]*slider2value;
+															if (!isNaN(scores[key][2])) 
+																finalscore = finalscore + scores[key][2]*slider3value;
+															if (!isNaN(scores[key][3])) 
+																finalscore = finalscore + scores[key][3]*slider4value;
+															
+															
+															finalscores[key] = finalscore;
+														}
+														
+														console.log(finalscores);
+														
+														finalscores = sortProperties(finalscores,true);
+														finalconfscoresmax = sortProperties(finalconfscores,true);
+														finalkeyscoresmax = sortProperties(finalkeyscores,true);
+														finaltropescoresmax = sortProperties(finaltropescores,true);
+														finalgenrescoresmax = sortProperties(finalgenrescores,true);
+														
+														console.log(finalscores);
+														
+														if (finalscores.length > 0){
+														
+															matches = [];
+															
+															
+															for  (var i=0; i < 25; i++) {
+																matches[i] = { 'axis1':currentbook.title , 'axis2':finalscores[i][0], 'value' : finalscores[i][1]/finalscores[0][1], 'url': URLs[finalscores[i][0]]};
+																matches[i+25] = { 'axis1':currentbook.title , 'axis2':finalscores[i][0], 'value' : finalconfscores[finalscores[i][0]]/finalconfscoresmax[0][1],'url': URLs[finalscores[i][0]] }
+																matches[i+75] = { 'axis1':currentbook.title , 'axis2':finalscores[i][0], 'value' : finalkeyscores[finalscores[i][0]]/finalkeyscoresmax[0][1] ,'url': URLs[finalscores[i][0]]}
+																matches[i+100] = { 'axis1':currentbook.title , 'axis2':finalscores[i][0], 'value' : finaltropescores[finalscores[i][0]]/finaltropescoresmax[0][1],'url': URLs[finalscores[i][0]] }
+																matches[i+50] = { 'axis1':currentbook.title , 'axis2':finalscores[i][0], 'value' : finalgenrescores[finalscores[i][0]]/finalgenrescoresmax[0][1],'url': URLs[finalscores[i][0]] }
+															}
+
+															$('.progress-bar').css('width', 95+'%').attr('aria-valuenow', 95)
+															
+															var $container = $('#chart'),
+															width = $container.width(),
+															height = $container.width(),
+															color = d3.scale.category20c();
+													
+													
+															$('#chart').height($container.width())		
+															
+															$( window ).resize(function() {
+																$('#chart').height($container.width())	
+															});
+
+															var margin = { top: 0, right: 100, bottom: 0, left: 0 },
+																dim = Math.min(parseInt(d3.select("#chart").style("width")), parseInt(d3.select("#chart").style("height")))
+																width = width - margin.right,
+																height = height - margin.top,
+																categories = 25,
+																gridSize = (width) / categories,
+																
+															console.log(height)	
+													
+													
+
+															var xScale = d3.scale.ordinal().rangeBands([0, width]);
+															var yScale = d3.scale.ordinal().rangeBands([0, 5*gridSize]);
+															var xAxis = d3.svg.axis().orient("top");
+															var yAxis = d3.svg.axis().orient("right");
+
+															// Create the svg canvas
+															d3.select("svg").remove();
+															var svg = d3.select("#chart").append("svg")
+																.attr("width", '100%')
+																.attr("height", '100%')
+																.attr('viewBox','0 0 '+ (Math.max(width,height)+margin.right) +' '+(Math.max(width,height)+margin.right) )
+																.append("g")
+																.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+															var tip = d3.tip()
+																.attr('class', 'd3-tip')
+																.offset([-10, 0])
+																.html(function(d) {
+																	if (d.url != null){
+																  return  "<div><span>Title:</span> <span style='color:white'>" + d.axis2 + "</span></div>" +
+																		  "<div><span>Correlation:</span> <span style='color:white'>" + d3.round(d.value, 3) + "</span></div>";
+																		  } else{
+																		  return  "<div><span>Title:</span> <span style='color:white'>" + d.axis2 + "</span></div>" +
+																		  "<div><span>Correlation:</span> <span style='color:white'>" + d3.round(d.value, 3) + "</span></div>";
+																		  
+																		  }
+																})
+
+
+															svg.call(tip);
+
+																   data = matches;
+
+																  data.forEach(function(d){
+																	d.x=d.axis1;
+																	d.y=d.axis2;
+																	d.value=+d.value;
+																  });
+																  
+																	console.log(data);
+
+																  var color = d3.scale.sqrt().range(["steelblue", "crimson"]);
+
+																  var domain1 = d3.set(data.map(function(d) {
+																		  return d.x
+																		})).values()
+																  var domain2 = d3.set(data.map(function(d) {
+																		  return d.y
+																		})).values()
+
+
+																  // Create the heatmap visualization
+																  var viz = svg.selectAll(".correlation")
+																			  .data(data)
+																			  .enter().append("rect")
+																				  .attr("class", "correlation")
+																				  .attr("y", function(d, i) {return gridSize * Math.floor(i/ categories) ; })
+																				  .attr("x", function(d, i) {return gridSize * (i % categories) ; })
+																				  .attr("width",gridSize)
+																				  .attr("height", gridSize)
+																					  .style("fill", function(d){
+																					var ypos = domain2.indexOf(d.y);
+																					var xpos = domain1.indexOf(d.x);
+																					return color(d.value);
+																				  })
+																				  .on('mouseover', tip.show)
+																				  .on('mouseout', tip.hide);
+
+																	var names = [];
+																	data.slice(0, categories).forEach(function(d){
+																	  names.push(d.axis2);
+																	});
+
+																	// Add the horizontal labels
+																	/*xScale.domain(names);
+
+																	xAxis.scale(xScale);
+
+																	svg.append("g")
+																		  .attr("class", "x axis")
+																		  .call(xAxis)
+																		  .selectAll("text")
+																			  .attr("y", -10)
+																			  .attr("dy", ".5em")
+																			  .attr("x", 0)
+																			  .attr("transform", "rotate(-45)")
+																			  .style("text-anchor", "start")
+																			  .style("font-weight", "bold");
+																			  
+																	*/
+
+																	//Add the vertical labels
+																	yScale.domain(['Average Score','Conformity','Genre','Keywords','Tropes']);
+
+																	yAxis.scale(yScale);
+
+																	svg.append("g")
+																		  .attr("class", "y axis")
+																		  .attr("transform","translate("+width+",0)")
+																		  .call(yAxis)
+																		  //.selectAll("text")
+																		  //.style("text-anchor", "end");
+																	
+																	$('.progress-bar').css('width', 100+'%').attr('aria-valuenow', 100).css('display', 'none');
+																	$('#progressrow').css('display', 'none')
+																		
+
+																function format(d) {
+																  d.value = +d.value;
+																  return d;
+																}
+														} else {
+														
+															$('.progress-bar').css('width', 100+'%').attr('aria-valuenow', 100).attr('class','progress-bar progress-bar-danger').text('Search Failed');
+														
+														}
+														
+														
+														
+														
+														
+														
+														
+														
+												
+													}
+												});
+										
+											}
+										});
+										
+									}
+								});
+							
+				
+							}
+						});
+				}
+
+				
+			},
+			error: function () {
+				$('#output').html('Bummer: there was an error!');
+			},
+		});
+    });
+});
+
+
+
+</script>
+
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+	<div class="container">
+
+		<div class="well row" style="margin-bottom:5px; margin-top:10px;">
+		
+		
+		
+
+            <div  class="col-md-6 col-xs-12" style=" border-width: 0px; margin-bottom: 15px;">
+	
+				<form action="">
+				  <div class="ui-widget">
+					<label for="formGroupExampleInput">Enter Book Title:</label>
+					<input type="text" id="TitleInput" name="books" />
+					<button type="button" class="btn btn-primary">Search</button>
+				  </div>
+				  
+				</form>
+				
+				<p style="margin-top:7px; font-size: 0.9em"> Use the sliders to adjust weighting of the suggestions. Conformity prioritizes similar review ratings and sentiment, Genre prioritizes similar genre, Keywords priotizes similar keywords, Tropes prioritizes similar tropes (storyline elements/cliches). Deafult is equal weighting. You have to search again when you modify the sliders. </p>
+
+			</div>
+			
+			
+			
+			
+			
+			
+
+			<div  class="col-md-6 col-xs-12" style=" border-width: 0px;">
+				
+				<div class="col-xs-3">
+					<b><p class ="centered-text">Conformity</p></b>
+					<div  id = "Aspect1"  style=" border-width: 0px;"></div>
+				</div>
+				<div class="col-xs-3">
+					<b><p class ="centered-text">Genre</p></b>
+					<div  id = "Aspect2" style=" border-width: 0px;"></div>
+				</div>
+				<div class="col-xs-3">
+					<b><p class ="centered-text">Keywords</p></b>
+					<div  id = "Aspect3" style=" border-width: 0px;"></div>
+				</div>
+				<div class="col-xs-3">
+					<b><p class ="centered-text">Tropes</p></b>
+					<div  id = "Aspect4" style=" border-width: 0px;"></div>
+				</div>
+
+				  <script>
+				  $( function() {
+					$( "#Aspect1" ).slider({
+					  orientation: "vertical",
+					  range: "min",
+					  min: 0,
+					  max: 10,
+					  value: 5,
+					  slide: function( event, ui ) {
+						$( "#amount" ).val( ui.value );
+					  }
+					});
+					
+				  } );
+				  
+				  $( function() {
+					$( "#Aspect2" ).slider({
+					  orientation: "vertical",
+					  range: "min",
+					  min: 0,
+					  max: 10,
+					  value: 5,
+					  slide: function( event, ui ) {
+						$( "#amount" ).val( ui.value );
+					  }
+					});
+					
+				  } );
+				  
+				  $( function() {
+					$( "#Aspect3" ).slider({
+					  orientation: "vertical",
+					  range: "min",
+					  min: 0,
+					  max: 10,
+					  value: 5,
+					  slide: function( event, ui ) {
+						$( "#amount" ).val( ui.value );
+					  }
+					});
+				
+				  } );
+				  	
+				  $( function() {
+					$( "#Aspect4" ).slider({
+					  orientation: "vertical",
+					  range: "min",
+					  min: 0,
+					  max: 10,
+					  value: 5,
+					  slide: function( event, ui ) {
+						$( "#amount" ).val( ui.value );
+					  }
+					});
+					
+				  } );
+
+				  
+				  $("[id^=Aspect]").addClass('centered-slider')
+				  
+				  </script>		
+					
+			</div>
+			
+			
+		</div>
+		
+		<div class="row" style="margin-bottom:45px; display:none" id="progressrow">
+			<div class="progress">
+				<div class="progress-bar progress-bar-striped active" role="progressbar" id="progress-bar"
+				aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%"> <!--progress-bar-success-->
+					Searching ...
+				</div>
+			</div>
+		</div>
+		
+		<div class="row" style="margin-bottom:0px;">
+		
+		<div  class="col-md-12 col-xs-12" style=" border-width: 0px;">
+
+			<div id="chart" style=""></div>
+
+			</div>
+
+
+			<style>
+
+			rect {
+					stroke: #E6E6E6;
+					stroke-width: 0px;
+				  }
+
+			.axis text {
+			  font-size: 1.3em;
+			  font-family: Consolas, courier;
+			  fill: #000;
+			}
+
+			.axis path,
+			.axis line {
+			  fill: none;
+			  stroke: none;
+			}
+
+			.d3-tip {
+			  line-height: 1;
+			  font: 14px sans-serif;
+			  padding: 12px;
+			  background: rgba(0, 0, 0, 0.8);
+			  color: rgb(185, 185, 185);
+			  border-radius: 2px;
+			}
+
+			/* Creates a small triangle extender for the tooltip */
+			.d3-tip:after {
+			  box-sizing: border-box;
+			  display: inline;
+			  font-size: 10px;
+			  width: 100%;
+			  line-height: 1;
+			  color: rgba(0, 0, 0, 0.8);
+			  content: "\25BC";
+			  position: absolute;
+			  text-align: center;
+			}
+
+			/* Style northward tooltips differently */
+			.d3-tip.n:after {
+			  margin: -1px 0 0 0;
+			  top: 100%;
+			  left: 0;
+			}
+
+			#chart {
+			  width: 100%;
+			  height: 400px;
+			  position:absolute;
+			  
+			}                         
+
+			</style>
+		
+		
+		</div>
+		
+	</div>
+</body>
+</html>
