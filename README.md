@@ -1,5 +1,4 @@
-# recommendation
-Book Recommendation System 
+#Book Recommendation System 
 1) Data Preperation
 
 Folder contains all scripts that went into the accumulation, cleaning, processing, reduction, feature extraction and assembly of the final dataset. This folder is not necessary to run the final recommender app, but represents the bulk majority of our work.
